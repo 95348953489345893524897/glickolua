@@ -12,8 +12,8 @@ local StartingRating = 1500
 local StartingRD = 350
 local c = 63.2 -- Used by the paper. I do not have the data to determine a different c for my case. 
 -- "I would therefore recommend that an RD never drop below a threshold value,
--- such as 30, so that ratings can change appreciably even in a relatively short time.
--- RDThreshold isn't used currently, will probably use it later."
+-- such as 30, so that ratings can change appreciably even in a relatively short time."
+-- RDThreshold isn't used currently, will probably use it later.
 local RDThreshold = 30
 --[[------------------
     Glicko calculations
