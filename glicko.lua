@@ -2,6 +2,7 @@
 -- https://www.glicko.net/glicko/glicko.pdf
 local StartingRating = 1500
 local StartingRD = 350
+local c = 63.2 -- Used by the paper. I do not have the data to determine a different c for my case. 
 -- I would therefore recommend that an RD never drop below a threshold value,
 -- such as 30, so that ratings can change appreciably even in a relatively short time.
 -- RDThreshold isn't used currently, will probably use it later.
@@ -37,7 +38,7 @@ local function GetPlayerRating(ply) -- Get the old Rating, for use in step 2
     return (Glickos[ply] and Glickos[ply]["Rating"]) or StartingRating
 end
 --]]
-local function GetGlicko(ply, category) -- Step 1
+local function GetGlicko(ply, category, constant) -- Step 1
     if not Glickos[ply] then
         -- If the player is unrated
         Glickos[ply] = {}
@@ -48,26 +49,24 @@ local function GetGlicko(ply, category) -- Step 1
         -- from the RD at the last period (RDold) by the formula
         -- RD = min(sqrt(RD^2_old + c^2, 350))
         -- where c is a constant that governs the increase in uncertainty between rating periods
-        --local c = 63.2 -- Used by the paper. I do not have the data to determine a different c for my case. 
-        local c = 0
-        Glickos[ply]["RD"] = math.min(math.sqrt(Glickos[ply]["RD"] ^ 2 + c ^ 2), StartingRD)
+        Glickos[ply]["RD"] = math.min(math.sqrt(Glickos[ply]["RD"] ^ 2 + (constant or c) ^ 2), StartingRD)
     end
     return Glickos[ply]["RD"], Glickos[ply]["Rating"]
 end
 
-local function CalculateNewGlicko(ply, matches, category)
+local function CalculateNewGlicko(ply, matches, category, constant)
     local OpponentRatings = {}
     local OpponentRDs = {}
     local MatchOutcomes = {}
     for _, data in pairs(matches) do
         if data.Winner ~= ply then
-            OpponentRatings[#OpponentRatings + 1] = select(2, GetGlicko(data.Winner))
-            OpponentRDs[#OpponentRDs + 1] = select(1, GetGlicko(data.Winner))
+            OpponentRatings[#OpponentRatings + 1] = select(2, GetGlicko(data.Winner, nil, constant))
+            OpponentRDs[#OpponentRDs + 1] = select(1, GetGlicko(data.Winner, nil, constant))
         end
 
         if data.Loser ~= ply then
-            OpponentRatings[#OpponentRatings + 1] = select(2, GetGlicko(data.Loser))
-            OpponentRDs[#OpponentRDs + 1] = select(1, GetGlicko(data.Loser))
+            OpponentRatings[#OpponentRatings + 1] = select(2, GetGlicko(data.Loser, nil, constant))
+            OpponentRDs[#OpponentRDs + 1] = select(1, GetGlicko(data.Loser, nil, constant))
         end
 
         MatchOutcomes[#MatchOutcomes + 1] = (data.Winner == ply and 1) or ((data.WinnerScore == data.LoserScore) and 0.5) or 0
@@ -76,7 +75,7 @@ local function CalculateNewGlicko(ply, matches, category)
     --[[--------
         Step 1
     ----------]]
-    local PlayerRD, PlayerRating = GetGlicko(ply)
+    local PlayerRD, PlayerRating = GetGlicko(ply, nil, constant)
     --[[--------
         Step 2
     ----------]]
@@ -153,5 +152,5 @@ Glickos["76561198000000004"] = {
     ["Rating"] = 1700
 }
 
-print(CalculateNewGlicko("76561198000000001", {Match1, Match2, Match3}))
+print(CalculateNewGlicko("76561198000000001", {Match1, Match2, Match3}, nil, 0))
 -- Output: 1464.1064627569	151.39890244797
