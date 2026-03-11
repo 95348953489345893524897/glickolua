@@ -1,54 +1,32 @@
 -- Glicko system in lua based on the paper by Dr. Mark E. Glickman 
 -- https://www.glicko.net/glicko/glicko.pdf
+-- to do: 
+-- explain everything
+-- add back notation comments
+-- rewrite it to not be weird arrays? 
+-- allow there to not be one universal glicko. some servers may have different modes, where they need seperable glickos (ie, duel glickos should not equal hns glickos)
+
 local StartingRating = 1500
 local StartingRD = 350
 local c = 63.2 -- Used by the paper. I do not have the data to determine a different c for my case. 
--- I would therefore recommend that an RD never drop below a threshold value,
--- such as 30, so that ratings can change appreciably even in a relatively short time.
+-- "I would therefore recommend that an RD never drop below a threshold value,
+-- such as 30, so that ratings can change appreciably even in a relatively short time."
 -- RDThreshold isn't used currently, will probably use it later.
 local RDThreshold = 30
---[[
-for _, ply in player.Iterator() do -- delete this for loop later
-    ply.Glickos = {
-        -- Make these able to have different category strings later. 
-        -- There should not be only 1 universal category for all glickos. 
-        -- Maybe servers have different gamemodes that need different glickos.
-        ["RD"] = nil,
-        ["Rating"] = nil
-    }
-end
---]]
 Glickos = {}
---[ply] = {["RD"] = 10, ["Rating"] = 1000}
---[[
-local function SUM(equation, iterations) -- Instead of writing a for loop every time for my mathematical notation I use this. It looks better.
-    local sum = 0
-    for j = 1, iterations do
-        sum = equation
-    end
-end
---]]
 local pi = math.pi -- To clutter notation less
---[[
-local function GetPlayerRD(ply) -- Get the old RD, for use in step 2
-    return (Glickos[ply] and Glickos[ply]["RD"]) or StartingRD
-end
 
-local function GetPlayerRating(ply) -- Get the old Rating, for use in step 2
-    return (Glickos[ply] and Glickos[ply]["Rating"]) or StartingRating
-end
---]]
 local function GetGlicko(ply, category, constant) -- Step 1
     if not Glickos[ply] then
-        -- If the player is unrated
+        -- "If the player is unrated
         Glickos[ply] = {}
         Glickos[ply]["Rating"] = StartingRating -- set the rating to 1500 
-        Glickos[ply]["RD"] = StartingRD -- and the RD to 350. 
-    else -- Otherwise,
+        Glickos[ply]["RD"] = StartingRD -- and the RD to 350."
+    else -- "Otherwise,
         -- use the player’s rating from the last period, and calculate the new RD
         -- from the RD at the last period (RDold) by the formula
         -- RD = min(sqrt(RD^2_old + c^2, 350))
-        -- where c is a constant that governs the increase in uncertainty between rating periods
+        -- where c is a constant that governs the increase in uncertainty between rating periods"
         Glickos[ply]["RD"] = math.min(math.sqrt(Glickos[ply]["RD"] ^ 2 + (constant or c) ^ 2), StartingRD)
     end
     return Glickos[ply]["RD"], Glickos[ply]["Rating"]
