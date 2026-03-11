@@ -4,32 +4,26 @@
 -- explain everything
 -- add back notation comments
 -- rewrite it to not be weird arrays? 
--- allow there to not be one universal glicko. some servers may have different modes, where they need seperable glickos (ie, duel glickos should not equal hns glickos)
-
+local pi = math.pi -- To clutter notation less
+--[[------------------
+    Constants
+--------------------]]
 local StartingRating = 1500
 local StartingRD = 350
 local c = 63.2 -- Used by the paper. I do not have the data to determine a different c for my case. 
 -- "I would therefore recommend that an RD never drop below a threshold value,
--- such as 30, so that ratings can change appreciably even in a relatively short time."
--- RDThreshold isn't used currently, will probably use it later.
+-- such as 30, so that ratings can change appreciably even in a relatively short time.
+-- RDThreshold isn't used currently, will probably use it later."
 local RDThreshold = 30
+--[[------------------
+    Glicko calculations
+--------------------]]
 Glickos = {}
-local pi = math.pi -- To clutter notation less
-
-local function GetGlicko(ply, category, constant) -- Step 1
-    if not Glickos[ply] then
-        -- "If the player is unrated
-        Glickos[ply] = {}
-        Glickos[ply]["Rating"] = StartingRating -- set the rating to 1500 
-        Glickos[ply]["RD"] = StartingRD -- and the RD to 350."
-    else -- "Otherwise,
-        -- use the player’s rating from the last period, and calculate the new RD
-        -- from the RD at the last period (RDold) by the formula
-        -- RD = min(sqrt(RD^2_old + c^2, 350))
-        -- where c is a constant that governs the increase in uncertainty between rating periods"
-        Glickos[ply]["RD"] = math.min(math.sqrt(Glickos[ply]["RD"] ^ 2 + (constant or c) ^ 2), StartingRD)
-    end
-    return Glickos[ply]["RD"], Glickos[ply]["Rating"]
+local function GetGlicko(ply, category) -- Step 1
+    Glickos[ply] = Glickos[ply] or {}
+    Glickos[ply][(category or "") .. "Rating"] = Glickos[ply][(category or "") .. "Rating"] or StartingRating -- set the rating to 1500 
+    Glickos[ply][(category or "") .. "RD"] = Glickos[ply][(category or "") .. "RD"] or StartingRD -- and the RD to 350."
+    return Glickos[ply][(category or "") .. "RD"], Glickos[ply][(category or "") .. "Rating"]
 end
 
 local function CalculateNewGlicko(ply, matches, category, constant)
@@ -38,13 +32,13 @@ local function CalculateNewGlicko(ply, matches, category, constant)
     local MatchOutcomes = {}
     for _, data in pairs(matches) do
         if data.Winner ~= ply then
-            OpponentRatings[#OpponentRatings + 1] = select(2, GetGlicko(data.Winner, nil, constant))
-            OpponentRDs[#OpponentRDs + 1] = select(1, GetGlicko(data.Winner, nil, constant))
+            OpponentRatings[#OpponentRatings + 1] = select(2, GetGlicko(data.Winner, category, constant))
+            OpponentRDs[#OpponentRDs + 1] = select(1, GetGlicko(data.Winner, category, constant))
         end
 
         if data.Loser ~= ply then
-            OpponentRatings[#OpponentRatings + 1] = select(2, GetGlicko(data.Loser, nil, constant))
-            OpponentRDs[#OpponentRDs + 1] = select(1, GetGlicko(data.Loser, nil, constant))
+            OpponentRatings[#OpponentRatings + 1] = select(2, GetGlicko(data.Loser, category, constant))
+            OpponentRDs[#OpponentRDs + 1] = select(1, GetGlicko(data.Loser, category, constant))
         end
 
         MatchOutcomes[#MatchOutcomes + 1] = (data.Winner == ply and 1) or ((data.WinnerScore == data.LoserScore) and 0.5) or 0
@@ -53,7 +47,14 @@ local function CalculateNewGlicko(ply, matches, category, constant)
     --[[--------
         Step 1
     ----------]]
-    local PlayerRD, PlayerRating = GetGlicko(ply, nil, constant)
+    -- "If the player is unrated set the rating to 1500 and the RD to 350.""
+    -- "Otherwise, use the player’s rating from the last period, and calculate the new RD
+    -- from the RD at the last period (RD_old) by the formula
+    -- RD = min(sqrt(RD^2_old + c^2, 350))
+    -- where c is a constant that governs the increase in uncertainty between rating periods"
+    local PlayerRD, PlayerRating = GetGlicko(ply, category, constant)
+    PlayerRD = math.min(math.sqrt(Glickos[ply][(category or "") .. "RD"] ^ 2 + (constant or c) ^ 2), StartingRD)
+    Glickos[ply][(category or "") .. "RD"] = PlayerRD
     --[[--------
         Step 2
     ----------]]
@@ -85,13 +86,13 @@ local function CalculateNewGlicko(ply, matches, category, constant)
     return rPrime, RDPrime
 end
 
---[[-----------------------
+--[[----------------------------------------------------------------------
     Tests 
     (examples used from section of the paper titled "Example calculation")
--------------------------]]
+------------------------------------------------------------------------]]
 Glickos["76561198000000001"] = {
-    ["RD"] = 200,
-    ["Rating"] = 1500
+    ["DuelRD"] = 200,
+    ["DuelRating"] = 1500
 }
 
 local Match1 = {
@@ -116,19 +117,19 @@ local Match3 = {
 }
 
 Glickos["76561198000000002"] = {
-    ["RD"] = 30,
-    ["Rating"] = 1400
+    ["DuelRD"] = 30,
+    ["DuelRating"] = 1400
 }
 
 Glickos["76561198000000003"] = {
-    ["RD"] = 100,
-    ["Rating"] = 1550
+    ["DuelRD"] = 100,
+    ["DuelRating"] = 1550
 }
 
 Glickos["76561198000000004"] = {
-    ["RD"] = 300,
-    ["Rating"] = 1700
+    ["DuelRD"] = 300,
+    ["DuelRating"] = 1700
 }
 
-print(CalculateNewGlicko("76561198000000001", {Match1, Match2, Match3}, nil, 0))
+print(CalculateNewGlicko("76561198000000001", {Match1, Match2, Match3}, "Duel", 0))
 -- Output: 1464.1064627569	151.39890244797
