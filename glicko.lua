@@ -74,9 +74,8 @@ local function CalculateNewGlicko(ply, matches, category)
     -- with an outcome being either 1, 1/2, or 0 for a win, draw and loss.
     local s_ = OpponentStats -- s_[j][3]
     -- Where q = ln(10) / 400 = 0.0057565
-    -- Logic: ln(x) = log(x) / log(e)
-    local e = 2.718281828459
-    local q = (math.log(10) / math.log(e)) / 400
+    local q = math.log(10) / 400
+
     -- Declare pi for less clutter in notation below
     local pi = math.pi
     local function g(RD_J) -- Where g(RD) = 1 / sqrt(1 + 3q^2(rd^2) / pi^2)
